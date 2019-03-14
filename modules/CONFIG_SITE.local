@@ -1,0 +1,6 @@
+# When building submodules, this should always be true:
+INSTALL_LOCATION = $(MOTOR)
+
+# Stop submodules from installing their configuration files:
+CONFIG_INSTALLS =
+
