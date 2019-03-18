@@ -1,0 +1,3 @@
+[submodule "modules/motorOms"]
+	path = modules/motorOms
+	url = https://github.com/kmpeters/motorOms.git
