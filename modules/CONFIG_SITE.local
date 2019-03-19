@@ -4,3 +4,6 @@ INSTALL_LOCATION = $(MOTOR)
 # Stop submodules from installing their configuration files:
 CONFIG_INSTALLS =
 
+# Use motor's CONFIG_SITE (this is where BUILD_IOCS is defined)
+-include $(MOTOR)/configure/CONFIG_SITE
+
