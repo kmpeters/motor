@@ -1,0 +1,292 @@
+diff --git a/.gitignore b/.gitignore
+index fae3cab..1263d68 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -15,3 +15,4 @@ dllPath.bat
+ auto_settings.sav*
+ auto_positions.sav*
+ .ccfxprepdir/
++*.local
+diff --git a/Makefile b/Makefile
+index 19c9068..0550335 100644
+--- a/Makefile
++++ b/Makefile
+@@ -9,6 +9,10 @@ DIRS += $(wildcard *App)
+ DIRS += $(wildcard *Top)
+ DIRS += $(wildcard iocBoot)
+ 
++ifeq ($(BUILD_IOCS), YES)
++DIRS += $(wildcard iocs)
++endif
++
+ # The build order is controlled by these dependency rules:
+ 
+ # All dirs except configure depend on configure
+@@ -28,4 +32,8 @@ iocBoot_DEPEND_DIRS += $(filter %App,$(DIRS))
+ 
+ # Add any additional dependency rules here:
+ 
++# iocs depend on all *Sup and *App dirs
++$(foreach dir, $(filter %iocs, $(DIRS)), \
++    $(eval $(dir)_DEPEND_DIRS += $(filter %Sup %App, $(DIRS))))
++
+ include $(TOP)/configure/RULES_TOP
+diff --git a/configure/EXAMPLE_CONFIG_SITE.local b/configure/EXAMPLE_CONFIG_SITE.local
+new file mode 100644
+index 0000000..9b57b80
+--- /dev/null
++++ b/configure/EXAMPLE_CONFIG_SITE.local
+@@ -0,0 +1,7 @@
++# Use settings from motor's CONFIG_SITE unless they are overridden below
++-include $(MOTOR)/configure/CONFIG_SITE
++
++#
++CHECK_RELEASE = WARN
++#
++#BUILD_IOCS = YES
+diff --git a/configure/EXAMPLE_RELEASE.local b/configure/EXAMPLE_RELEASE.local
+new file mode 100644
+index 0000000..4012509
+--- /dev/null
++++ b/configure/EXAMPLE_RELEASE.local
+@@ -0,0 +1,4 @@
++MOTOR=
++-include $(MOTOR)/configure/RELEASE
++# path to motorVendor is needed to build the IOC inside motorVendor, but outside motor
++MOTOR_VENDOR=
+diff --git a/configure/RELEASE b/configure/RELEASE
+index f95c484..d194feb 100644
+--- a/configure/RELEASE
++++ b/configure/RELEASE
+@@ -1,43 +1,7 @@
+ # RELEASE - Location of external support modules
+-#
+-# IF YOU MAKE ANY CHANGES to this file you must subsequently
+-# do a "gnumake rebuild" in this application's top level
+-# directory.
+-#
+-# The build process does not check dependencies against files
+-# that are outside this application, thus you should do a
+-# "gnumake rebuild" in the top level directory after EPICS_BASE
+-# or any other external module pointed to below is rebuilt.
+-#
+-# Host- or target-specific settings can be given in files named
+-#  RELEASE.$(EPICS_HOST_ARCH).Common
+-#  RELEASE.Common.$(T_A)
+-#  RELEASE.$(EPICS_HOST_ARCH).$(T_A)
+-#
+-# This file is parsed by both GNUmake and an EPICS Perl script,
+-# so it can ONLY contain definititions of paths to other support
+-# modules, variable definitions that are used in module paths,
+-# and include statements that pull in other RELEASE files.
+-# Variables may be used before their values have been set.
+-# Build variables that are NOT used in paths should be set in
+-# the CONFIG_SITE file.
+ 
+-# Variables and paths to dependent modules:
+-#MODULES = /path/to/modules
+-#MYMODULE = $(MODULES)/my-module
+-
+-# If using the sequencer, point SNCSEQ at its top directory:
+-#SNCSEQ = $(MODULES)/seq-ver
+-
+-# EPICS_BASE should appear last so earlier modules can override stuff:
+-EPICS_BASE = /APSshare/epics/base-3.15.6
+-
+-# Set RULES here if you want to use build rules from somewhere
+-# other than EPICS_BASE:
+-#RULES = $(MODULES)/build-rules
+-
+-# These allow developers to override the RELEASE variable settings
+-# without having to modify the configure/RELEASE file itself.
+--include $(TOP)/../RELEASE.local
++# Use motor/module's generated release file when buidling inside motor
++-include $(TOP)/../RELEASE.$(EPICS_HOST_ARCH).local
++# Use motorVendor's RELEASE.local when building outside motor
+ -include $(TOP)/configure/RELEASE.local
+ 
+diff --git a/iocs/Makefile b/iocs/Makefile
+new file mode 100644
+index 0000000..1a1aef2
+--- /dev/null
++++ b/iocs/Makefile
+@@ -0,0 +1,25 @@
++TOP = ..
++include $(TOP)/configure/CONFIG
++
++DIRS += vendorIOC
++
++include $(TOP)/configure/RULES_TOP
++
++uninstallTargets = $(foreach dir, $(DIRS), $(dir)$(DIVIDER)uninstall)
++uninstall: $(uninstallTargets)
++define UNINSTALL_template
++$(1)$(DIVIDER)uninstall:
++	$(MAKE) -C $(1) uninstall
++endef
++$(foreach dir, $(DIRS), $(eval $(call UNINSTALL_template,$(dir))))
++.PHONY: uninstall $(uninstallTargets)
++
++realuninstallTargets = $(foreach dir, $(DIRS), $(dir)$(DIVIDER)realuninstall)
++realuninstall: $(realuninstallTargets)
++define REALUNINSTALL_template
++$(1)$(DIVIDER)realuninstall:
++	$(MAKE) -C $(1) realuninstall
++endef
++$(foreach dir, $(DIRS), $(eval $(call REALUNINSTALL_template,$(dir))))
++.PHONY: realuninstall $(realuninstallTargets)
++
+diff --git a/iocs/vendorIOC/configure/CONFIG_SITE b/iocs/vendorIOC/configure/CONFIG_SITE
+index 212485e..eacd0e7 100644
+--- a/iocs/vendorIOC/configure/CONFIG_SITE
++++ b/iocs/vendorIOC/configure/CONFIG_SITE
+@@ -35,9 +35,8 @@ CHECK_RELEASE = YES
+ #HOST_OPT = NO
+ #CROSS_OPT = NO
+ 
+-# These allow developers to override the CONFIG_SITE variable
+-# settings without having to modify the configure/CONFIG_SITE
+-# file itself.
+--include $(TOP)/../CONFIG_SITE.local
++# Include motorVendor's CONFIG_SITE.local when building inside motorVendor
++-include $(TOP)/../../configure/CONFIG_SITE.local
++# Use vendorIOC's CONFIG_SITE.local
+ -include $(TOP)/configure/CONFIG_SITE.local
+ 
+diff --git a/iocs/vendorIOC/configure/EXAMPLE_CONFIG_SITE.local b/iocs/vendorIOC/configure/EXAMPLE_CONFIG_SITE.local
+new file mode 100644
+index 0000000..e56b472
+--- /dev/null
++++ b/iocs/vendorIOC/configure/EXAMPLE_CONFIG_SITE.local
+@@ -0,0 +1,6 @@
++# Use settings from motor's CONFIG_SITE unless they are overridden below
++-include $(MOTOR)/configure/CONFIG_SITE
++
++#
++CHECK_RELEASE = WARN
++
+diff --git a/iocs/vendorIOC/configure/EXAMPLE_RELEASE.local b/iocs/vendorIOC/configure/EXAMPLE_RELEASE.local
+new file mode 100644
+index 0000000..d81b327
+--- /dev/null
++++ b/iocs/vendorIOC/configure/EXAMPLE_RELEASE.local
+@@ -0,0 +1,6 @@
++# Use the following lines if motorVendor was built inside motor
++MOTOR=
++-include $(MOTOR)/configure/RELEASE
++# Use the following lines if motorVendor was built outside motor
++#!MOTOR_VENDOR=
++#!-include $(MOTOR_VENDOR)/configure/RELEASE.local
+diff --git a/iocs/vendorIOC/configure/RELEASE b/iocs/vendorIOC/configure/RELEASE
+index f95c484..a88bf5e 100644
+--- a/iocs/vendorIOC/configure/RELEASE
++++ b/iocs/vendorIOC/configure/RELEASE
+@@ -1,43 +1,8 @@
+ # RELEASE - Location of external support modules
+-#
+-# IF YOU MAKE ANY CHANGES to this file you must subsequently
+-# do a "gnumake rebuild" in this application's top level
+-# directory.
+-#
+-# The build process does not check dependencies against files
+-# that are outside this application, thus you should do a
+-# "gnumake rebuild" in the top level directory after EPICS_BASE
+-# or any other external module pointed to below is rebuilt.
+-#
+-# Host- or target-specific settings can be given in files named
+-#  RELEASE.$(EPICS_HOST_ARCH).Common
+-#  RELEASE.Common.$(T_A)
+-#  RELEASE.$(EPICS_HOST_ARCH).$(T_A)
+-#
+-# This file is parsed by both GNUmake and an EPICS Perl script,
+-# so it can ONLY contain definititions of paths to other support
+-# modules, variable definitions that are used in module paths,
+-# and include statements that pull in other RELEASE files.
+-# Variables may be used before their values have been set.
+-# Build variables that are NOT used in paths should be set in
+-# the CONFIG_SITE file.
+ 
+-# Variables and paths to dependent modules:
+-#MODULES = /path/to/modules
+-#MYMODULE = $(MODULES)/my-module
+-
+-# If using the sequencer, point SNCSEQ at its top directory:
+-#SNCSEQ = $(MODULES)/seq-ver
+-
+-# EPICS_BASE should appear last so earlier modules can override stuff:
+-EPICS_BASE = /APSshare/epics/base-3.15.6
+-
+-# Set RULES here if you want to use build rules from somewhere
+-# other than EPICS_BASE:
+-#RULES = $(MODULES)/build-rules
+-
+-# These allow developers to override the RELEASE variable settings
+-# without having to modify the configure/RELEASE file itself.
+--include $(TOP)/../RELEASE.local
++# Use motor/module's generated release file when buidling inside motor
++-include $(TOP)/../../../RELEASE.$(EPICS_HOST_ARCH).local
++# Use motorVendor's release file when building inside motorVendor, but outside motor
++-include $(TOP)/../../configure/RELEASE.local
++# Use vendorIOC's RELEASE.local when building outside motorVendor
+ -include $(TOP)/configure/RELEASE.local
+-
+diff --git a/iocs/vendorIOC/vendorApp/src/Makefile b/iocs/vendorIOC/vendorApp/src/Makefile
+index 4e4cce1..312a562 100644
+--- a/iocs/vendorIOC/vendorApp/src/Makefile
++++ b/iocs/vendorIOC/vendorApp/src/Makefile
+@@ -5,6 +5,9 @@ include $(TOP)/configure/CONFIG
+ #  ADD MACRO DEFINITIONS AFTER THIS LINE
+ #=============================
+ 
++# The following are used for debugging messages.
++#!USR_CXXFLAGS += -DDEBUG
++
+ #=============================
+ # Build the IOC application
+ 
+@@ -16,10 +19,21 @@ DBD += vendor.dbd
+ vendor_DBD += base.dbd
+ 
+ # Include dbd files from all support applications:
+-#vendor_DBD += xxx.dbd
++#ifdef ASYN
++vendor_DBD += asyn.dbd
++#endif
++vendor_DBD += motorSupport.dbd
++vendor_DBD += devVendor.dbd
+ 
+ # Add all the support libraries needed by this IOC
+-#vendor_LIBS += xxx
++vendor_LIBS += vendor
++vendor_LIBS += motor
++#ifdef ASYN
++vendor_LIBS += asyn
++#endif
++#ifdef SNCSEQ
++vendor_LIBS += seq pv
++#endif
+ 
+ # vendor_registerRecordDeviceDriver.cpp derives from vendor.dbd
+ vendor_SRCS += vendor_registerRecordDeviceDriver.cpp
+diff --git a/iocs/vendorIOC/iocBoot/iocVendor/st.cmd b/iocs/vendorIOC/iocBoot/iocVendor/st.cmd
+index 763aa34..971376d 100644
+--- a/iocs/vendorIOC/iocBoot/iocVendor/st.cmd
++++ b/iocs/vendorIOC/iocBoot/iocVendor/st.cmd
+@@ -11,11 +11,13 @@ cd "${TOP}"
+ dbLoadDatabase "dbd/vendor.dbd"
+ vendor_registerRecordDeviceDriver pdbbase
+ 
+-## Load record instances
+-#dbLoadRecords("db/xxx.db","user=kpetersn")
++## motorUtil (allstop & alldone)
++dbLoadRecords("$(MOTOR)/db/motorUtil.db", "P=vendor:")
+ 
+ cd "${TOP}/iocBoot/${IOC}"
+ iocInit
+ 
+-## Start any sequence programs
+-#seq sncxxx,"user=kpetersn"
++## motorUtil (allstop & alldone)
++motorUtilInit("vendor:")
++
++# Boot complete
