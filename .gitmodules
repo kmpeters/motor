@@ -1,3 +1,6 @@
 [submodule "modules/motorOms"]
 	path = modules/motorOms
 	url = https://github.com/kmpeters/motorOms.git
+[submodule "modules/motorNewport"]
+	path = modules/motorNewport
+	url = https://github.com/kmpeters/motorNewport.git
