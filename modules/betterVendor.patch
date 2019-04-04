@@ -72,10 +72,10 @@ index 0000000..4012509
 --- /dev/null
 +++ b/configure/EXAMPLE_RELEASE.local
 @@ -0,0 +1,4 @@
-+MOTOR=/home/oxygen/KPETERSN/epics/motor-split/motor-kmp
++MOTOR=
 +-include $(MOTOR)/configure/RELEASE
 +# path to motorVendor is needed to build the IOC inside motorVendor, but outside motor
-+MOTOR_VENDOR=/home/oxygen/KPETERSN/epics/motor-split/VENDOR/motorVendor4
++MOTOR_VENDOR=
 diff --git a/configure/Makefile b/configure/Makefile
 index 9254309..69c791d 100644
 --- a/configure/Makefile
@@ -213,10 +213,10 @@ index 0000000..d81b327
 +++ b/iocs/vendorIOC/configure/EXAMPLE_RELEASE.local
 @@ -0,0 +1,6 @@
 +# Use the following lines if motorVendor was built inside motor
-+MOTOR=/APSshare/epics/synApps_6_0/support/motor-R6-10-1
++MOTOR=
 +-include $(MOTOR)/configure/RELEASE
 +# Use the following lines if motorVendor was built outside motor
-+#!MOTOR_VENDOR=/home/oxygen/KPETERSN/epics/motor-split/VENDOR/motorVendor4
++#!MOTOR_VENDOR=
 +#!-include $(MOTOR_VENDOR)/configure/RELEASE.local
 diff --git a/iocs/vendorIOC/configure/RELEASE b/iocs/vendorIOC/configure/RELEASE
 index f95c484..a88bf5e 100644
